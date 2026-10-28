@@ -157,16 +157,21 @@ export class PdfViewer {
   }
 
   fitWidth(): void {
-    if (this.#layout) this.setScale(this.#fitWidthScale(this.#currentPage, MAX_SCALE));
+    if (this.#layout) this.setScale(this.#fitWidthScale(this.#pageAtCenter(), MAX_SCALE));
   }
 
   fitPage(): void {
     const layout = this.#layout;
     if (!layout) return;
-    const i = this.#currentPage;
+    const i = this.#pageAtCenter();
     const byHeight = (this.#scroller.clientHeight - 2 * PAGE_GAP) / layout.baseHeight(i);
     this.setScale(Math.min(this.#fitWidthScale(i, MAX_SCALE), byHeight));
     this.goToPage(i + 1);
+  }
+
+  /** Read from the scroll position, since #currentPage only updates on the next frame. */
+  #pageAtCenter(): number {
+    return this.#layout!.indexAt(this.#scroller.scrollTop + this.#scroller.clientHeight / 2);
   }
 
   #fitWidthScale(index: number, max: number): number {
