@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <meta name="theme-color" content="#070914" />
+    <meta name="description" content="Velo PDF: instant viewing for massive PDF files. Local, offline, zero lag." />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <title>Velo PDF</title>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10" /></symbol>
+        <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></symbol>
+        <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v1H7.5a2 2 0 0 0-1.9 1.4L3 19z" /><path d="M5.6 11.4A2 2 0 0 1 7.5 10H21l-2.6 7.6A2 2 0 0 1 16.5 19H3z" /></symbol>
+        <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M9 13h6M9 17h4" /></symbol>
+        <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></symbol>
+        <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" /></symbol>
+        <symbol id="i-install" viewBox="0 0 24 24"><path d="M12 3v11M7.5 9.5L12 14l4.5-4.5" /><path d="M4 15v3a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-3" /></symbol>
+        <symbol id="i-zoom-in" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4M8 11h6M11 8v6" /></symbol>
+        <symbol id="i-zoom-out" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4M8 11h6" /></symbol>
+        <symbol id="i-fit-width" viewBox="0 0 24 24"><path d="M3 5v14M21 5v14M7 12h10M10 9l-3 3 3 3M14 9l3 3-3 3" /></symbol>
+        <symbol id="i-fit-page" viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="2" /><path d="M9 8h6M9 12h6M9 16h3" /></symbol>
+        <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z" /></symbol>
+        <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /><path d="M9 12l2 2 4-4" /></symbol>
+        <symbol id="i-offline" viewBox="0 0 24 24"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01M2 9a14.5 14.5 0 0 1 20 0" /></symbol>
+      </defs>
+    </svg>
+
+    <header class="topbar">
+      <button id="menu-btn" class="icon-btn" aria-label="Open menu" aria-controls="sidebar" aria-expanded="false">
+        <svg><use href="#i-menu" /></svg>
+      </button>
+      <button id="brand" class="brand" title="Home">
+        <img src="/logo.svg" alt="" width="30" height="30" />
+        <span class="brand-name">VELO<span>PDF</span></span>
+      </button>
+      <div id="doc-chip" class="doc-chip" hidden>
+        <svg><use href="#i-file" /></svg>
+        <span id="file-name"></span>
+      </div>
+      <div class="spacer"></div>
+      <div id="nav" class="cluster" hidden>
+        <input id="page-input" type="text" inputmode="numeric" aria-label="Page number" />
+        <span id="page-count" class="muted"></span>
+      </div>
+      <div id="zoom" class="cluster" hidden>
+        <button id="zoom-out" class="icon-btn" title="Zoom out (Ctrl+-)"><svg><use href="#i-zoom-out" /></svg></button>
+        <span id="zoom-value" class="zoom-value"></span>
+        <button id="zoom-in" class="icon-btn" title="Zoom in (Ctrl+=)"><svg><use href="#i-zoom-in" /></svg></button>
+        <span class="divider"></span>
+        <button id="fit-width" class="icon-btn" title="Fit width"><svg><use href="#i-fit-width" /></svg></button>
+        <button id="fit-page" class="icon-btn" title="Fit page (Ctrl+0)"><svg><use href="#i-fit-page" /></svg></button>
+      </div>
+      <button id="install" class="install-btn" title="Install Velo PDF as an app" hidden>
+        <svg><use href="#i-install" /></svg><span>Install app</span>
+      </button>
+    </header>
+
+    <div id="scrim" class="scrim" hidden></div>
+    <aside id="sidebar" class="sidebar" aria-label="Menu" inert>
+      <div class="sidebar-head">
+        <img src="/logo.svg" alt="" width="36" height="36" />
+        <span class="brand-name">VELO<span>PDF</span></span>
+        <button id="menu-close" class="icon-btn" aria-label="Close menu"><svg><use href="#i-close" /></svg></button>
+      </div>
+      <button id="sidebar-open" class="primary-btn">
+        <svg><use href="#i-folder" /></svg><span>Open PDF</span><kbd>Ctrl O</kbd>
+      </button>
+      <div class="section-title">
+        <svg><use href="#i-clock" /></svg><span>Recent files</span>
+        <button id="clear-recent" class="text-btn" hidden>Clear</button>
+      </div>
+      <ul id="recent-list" class="recent-list"></ul>
+      <p id="recent-empty" class="recent-empty">Files you open will show up here.</p>
+      <div class="sidebar-foot">
+        <svg><use href="#i-shield" /></svg>
+        <span>Files never leave your device. History keeps only a reference to each file.</span>
+      </div>
+      <button id="sidebar-install" class="install-btn wide" hidden>
+        <svg><use href="#i-install" /></svg><span>Install app</span>
+      </button>
+    </aside>
+
+    <main id="scroller" class="scroller" tabindex="0">
+      <section id="empty" class="hero">
+        <div class="hero-glow"></div>
+        <img src="/logo.svg" alt="Velo PDF logo" class="hero-logo" width="132" height="132" />
+        <h1 class="hero-title">VELO<span>PDF</span></h1>
+        <p class="tagline">Instant viewing for massive PDFs</p>
+        <button id="open" class="primary-btn big">
+          <svg><use href="#i-folder" /></svg><span>Open PDF</span>
+        </button>
+        <p class="hint">or drop a file anywhere · <kbd>Ctrl O</kbd></p>
+        <ul class="features">
+          <li><svg><use href="#i-bolt" /></svg>Zero-lag scrolling, even at 10,000 pages</li>
+          <li><svg><use href="#i-offline" /></svg>Works offline, installs like a desktop app</li>
+          <li><svg><use href="#i-shield" /></svg>Local only: nothing is uploaded</li>
+        </ul>
+        <div id="hero-recent-wrap" class="hero-recent" hidden>
+          <h2>Continue reading</h2>
+          <ul id="hero-recent" class="recent-list cards"></ul>
+        </div>
+      </section>
+    </main>
+
+    <div id="status" class="toast" role="status" hidden></div>
+    <div class="drop-overlay"><div><svg><use href="#i-file" /></svg>Drop PDF to open</div></div>
+    <input id="file-input" type="file" accept="application/pdf,.pdf" hidden />
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
