@@ -121,7 +121,7 @@ The dev server doesn't run the service worker; use `build:preview` (or the deplo
 
 | Technique | Where |
 |---|---|
-| Large files are read from disk by byte range (`Blob.slice`), never fully loaded into RAM | [`openPdf.ts`](src/pdf/openPdf.ts) |
+| Large files are read from disk by byte range (`Blob.slice`), never fully loaded into RAM! | [`openPdf.ts`](src/pdf/openPdf.ts) |
 | Virtualized DOM: only the visible pages ±1 exist | [`PdfViewer.ts`](src/viewer/PdfViewer.ts) `#update` |
 | Page sizes are guessed from page 1, then fixed in idle batches with scroll anchoring | [`PageLayout.ts`](src/viewer/PageLayout.ts), `#loadAllSizes` |
 | Priority render queue that cancels off-screen work on every scroll | [`RenderQueue.ts`](src/viewer/RenderQueue.ts) |
