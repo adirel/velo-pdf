@@ -26,6 +26,14 @@
         <symbol id="i-fit-page" viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="2" /><path d="M9 8h6M9 12h6M9 16h3" /></symbol>
         <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z" /></symbol>
         <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /><path d="M9 12l2 2 4-4" /></symbol>
+        <symbol id="i-hand" viewBox="0 0 24 24"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12M11 11.5v-8a1.5 1.5 0 0 1 3 0V12M14 5.5a1.5 1.5 0 0 1 3 0V12M17 8.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-2a6 6 0 0 1-4.6-2.2L4 14.5a1.6 1.6 0 0 1 2.4-2.1L8 14" /></symbol>
+        <symbol id="i-text" viewBox="0 0 24 24"><path d="M9 4h6M12 4v16M9 20h6M5 8V6M19 8V6" /></symbol>
+        <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></symbol>
+        <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z" /></symbol>
+        <symbol id="i-up" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6" /></symbol>
+        <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></symbol>
+        <symbol id="i-github" viewBox="0 0 16 16"><path fill="currentColor" stroke="none" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" /></symbol>
+        <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" /></symbol>
         <symbol id="i-offline" viewBox="0 0 24 24"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01M2 9a14.5 14.5 0 0 1 20 0" /></symbol>
       </defs>
     </svg>
@@ -55,10 +63,29 @@
         <button id="fit-width" class="icon-btn" title="Fit width"><svg><use href="#i-fit-width" /></svg></button>
         <button id="fit-page" class="icon-btn" title="Fit page (Ctrl+0)"><svg><use href="#i-fit-page" /></svg></button>
       </div>
+      <div id="tools" class="cluster" hidden>
+        <button id="tool-hand" class="icon-btn toggle" title="Hand tool: drag to pan (H)" aria-pressed="true"><svg><use href="#i-hand" /></svg></button>
+        <button id="tool-select" class="icon-btn toggle" title="Select text (T)" aria-pressed="false"><svg><use href="#i-text" /></svg></button>
+        <span class="divider"></span>
+        <button id="search-btn" class="icon-btn" title="Search (Ctrl+F)"><svg><use href="#i-search" /></svg></button>
+        <button id="dark-btn" class="icon-btn toggle" title="Dark pages (D)" aria-pressed="false"><svg><use href="#i-moon" /></svg></button>
+      </div>
+      <a class="icon-btn github-link" href="https://github.com/adirel/velo-pdf" target="_blank" rel="noopener" title="Velo PDF on GitHub" aria-label="Velo PDF on GitHub">
+        <svg><use href="#i-github" /></svg>
+      </a>
       <button id="install" class="install-btn" title="Install Velo PDF as an app" hidden>
         <svg><use href="#i-install" /></svg><span>Install app</span>
       </button>
     </header>
+
+    <div id="searchbar" class="searchbar" role="search" hidden>
+      <svg><use href="#i-search" /></svg>
+      <input id="search-input" type="search" placeholder="Search in document" aria-label="Search in document" autocomplete="off" />
+      <span id="search-count" class="search-count" aria-live="polite"></span>
+      <button id="search-prev" class="icon-btn" title="Previous match (Shift+Enter)"><svg><use href="#i-up" /></svg></button>
+      <button id="search-next" class="icon-btn" title="Next match (Enter)"><svg><use href="#i-down" /></svg></button>
+      <button id="search-close" class="icon-btn" title="Close (Esc)"><svg><use href="#i-close" /></svg></button>
+    </div>
 
     <div id="scrim" class="scrim" hidden></div>
     <aside id="sidebar" class="sidebar" aria-label="Menu" inert>
@@ -80,6 +107,9 @@
         <svg><use href="#i-shield" /></svg>
         <span>Files never leave your device. History keeps only a reference to each file.</span>
       </div>
+      <a class="sidebar-link" href="https://github.com/adirel/velo-pdf" target="_blank" rel="noopener">
+        <svg><use href="#i-github" /></svg><span>github.com/adirel/velo-pdf</span>
+      </a>
       <button id="sidebar-install" class="install-btn wide" hidden>
         <svg><use href="#i-install" /></svg><span>Install app</span>
       </button>
@@ -95,6 +125,9 @@
           <svg><use href="#i-folder" /></svg><span>Open PDF</span>
         </button>
         <p class="hint">or drop a file anywhere · <kbd>Ctrl O</kbd></p>
+        <a class="github-cta" href="https://github.com/adirel/velo-pdf" target="_blank" rel="noopener">
+          <svg><use href="#i-github" /></svg><span>Open source on GitHub</span><span class="cta-star"><svg><use href="#i-star" /></svg>Star</span>
+        </a>
         <ul class="features">
           <li><svg><use href="#i-bolt" /></svg>Zero-lag scrolling, even at 10,000 pages</li>
           <li><svg><use href="#i-offline" /></svg>Works offline, installs like a desktop app</li>

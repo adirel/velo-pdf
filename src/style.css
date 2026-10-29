@@ -234,6 +234,62 @@ kbd {
   color: var(--cyan);
 }
 
+.icon-btn.toggle[aria-pressed="true"] {
+  background: rgb(34 211 238 / 0.14);
+  border-color: rgb(34 211 238 / 0.45);
+  color: var(--cyan);
+  box-shadow: 0 0 14px rgb(34 211 238 / 0.25);
+}
+
+.searchbar {
+  position: fixed;
+  top: 64px;
+  right: 14px;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: min(440px, calc(100vw - 28px));
+  padding: 6px 6px 6px 14px;
+  border: 1px solid rgb(34 211 238 / 0.4);
+  border-radius: 14px;
+  background: var(--glass-strong);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.5), 0 0 24px rgb(34 211 238 / 0.15);
+  animation: rise-in 0.18s ease;
+}
+
+.searchbar > svg {
+  color: var(--cyan);
+}
+
+.searchbar input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  border: 0;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  outline: none;
+}
+
+.searchbar input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.search-count {
+  white-space: nowrap;
+  color: var(--muted);
+  font: 600 11px var(--display);
+  font-variant-numeric: tabular-nums;
+}
+
+.searchbar .icon-btn {
+  width: 32px;
+  height: 32px;
+}
+
 .divider {
   width: 1px;
   height: 20px;
@@ -571,6 +627,24 @@ kbd {
   z-index: 1;
 }
 
+/* Hand tool: drags pan, so the text layer must not catch the pointer. */
+.scroller:not(.select-mode) .textLayer {
+  pointer-events: none;
+}
+
+.scroller.select-mode .pdf-content {
+  cursor: text;
+}
+
+/* Dark reader mode: invert lightness but keep hues. */
+.scroller.dark-pages .pdf-page {
+  background: #12131a;
+}
+
+.scroller.dark-pages .pdf-page canvas {
+  filter: invert(0.92) hue-rotate(180deg);
+}
+
 /* ---- Home / hero ----------------------------------------------------------------- */
 
 .hero {
@@ -751,6 +825,13 @@ body.dragging .drop-overlay {
   }
 }
 
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
 @keyframes rise {
   from {
     opacity: 0;
@@ -763,7 +844,10 @@ body.dragging .drop-overlay {
   .doc-chip,
   .install-btn span,
   #zoom .divider,
-  #fit-width {
+  #tools .divider,
+  #fit-width,
+  #tool-hand,
+  #tool-select {
     display: none;
   }
 }
@@ -774,4 +858,75 @@ body.dragging .drop-overlay {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* ---- GitHub links ---------------------------------------------------------------- */
+
+a.icon-btn {
+  color: var(--fg);
+}
+
+.github-link svg {
+  width: 20px;
+  height: 20px;
+}
+
+.github-cta {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 22px;
+  padding: 8px 8px 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 0.03);
+  color: #c3c9e6;
+  font-size: 14px;
+  text-decoration: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.github-cta:hover {
+  border-color: rgb(139 92 246 / 0.6);
+  box-shadow: 0 0 22px rgb(139 92 246 / 0.25);
+}
+
+.cta-star {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgb(250 204 21 / 0.12);
+  color: #facc15;
+  font-weight: 600;
+}
+
+.cta-star svg {
+  width: 15px;
+  height: 15px;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 18px 18px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: #c3c9e6;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.sidebar-link:hover {
+  border-color: rgb(34 211 238 / 0.45);
+  color: var(--cyan);
+}
+
+.sidebar-link svg {
+  width: 18px;
+  height: 18px;
 }
