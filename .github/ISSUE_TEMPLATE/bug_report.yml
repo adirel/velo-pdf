@@ -1,0 +1,28 @@
+name: Bug report
+description: Something doesn't work or is slower than it should be
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: input
+    id: pdf
+    attributes:
+      label: PDF details
+      description: Size and page count (attach the file below if you can share it)
+      placeholder: 120 MB, 8,000 pages, scanned
+  - type: input
+    id: env
+    attributes:
+      label: Browser and OS
+      placeholder: Edge 141 on Windows 11, installed as an app
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots, console errors, Performance profile

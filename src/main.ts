@@ -2,6 +2,7 @@ import "@fontsource-variable/inter";
 import "@fontsource/orbitron/600.css";
 import "@fontsource/orbitron/800.css";
 import "./style.css";
+import "./textLayer.css";
 import { openPdf } from "./pdf/openPdf";
 import {
   clearRecent,
@@ -12,7 +13,8 @@ import {
   updatePage,
   type RecentFile,
 } from "./recentFiles";
-import { PdfViewer, type ViewerState } from "./viewer/PdfViewer";
+import { PdfSearch, type SearchMatch } from "./search/PdfSearch";
+import { PdfViewer, type Highlights, type ViewerState } from "./viewer/PdfViewer";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -67,9 +69,11 @@ async function openFile(file: File, handle?: FileSystemFileHandle): Promise<void
     const doc = await openPdf(file);
     if (token !== openToken) return void doc.loadingTask.destroy();
     currentId = null;
-    await viewer.load(doc);
+    closeSearch();
+    search = new PdfSearch(doc);
+    await viewer.load(doc, file.size);
     empty.hidden = true;
-    $("nav").hidden = $("zoom").hidden = docChip.hidden = false;
+    $("nav").hidden = $("zoom").hidden = $("tools").hidden = docChip.hidden = false;
     fileName.textContent = file.name;
     docChip.title = file.name;
     document.title = `${file.name} · Velo PDF`;
@@ -91,9 +95,11 @@ async function openFile(file: File, handle?: FileSystemFileHandle): Promise<void
 function goHome(): void {
   openToken++;
   currentId = null;
+  closeSearch();
+  search = null;
   viewer.close();
   empty.hidden = false;
-  $("nav").hidden = $("zoom").hidden = docChip.hidden = true;
+  $("nav").hidden = $("zoom").hidden = $("tools").hidden = docChip.hidden = true;
   document.title = "Velo PDF";
   closeMenu();
   void renderRecent();
@@ -279,7 +285,7 @@ let drag: { x: number; y: number; time: number; vx: number; vy: number } | null 
 let glideFrame = 0;
 
 scroller.addEventListener("pointerdown", (e) => {
-  if (e.button !== 0 || e.pointerType === "touch" || !hasDocument()) return;
+  if (e.button !== 0 || e.pointerType === "touch" || !hasDocument() || tool === "select") return;
   // Leave clicks on the scrollbars alone.
   const rect = scroller.getBoundingClientRect();
   if (e.clientX - rect.left >= scroller.clientWidth || e.clientY - rect.top >= scroller.clientHeight) return;
@@ -330,6 +336,7 @@ window.addEventListener("keydown", (e) => {
   if (!(e.ctrlKey || e.metaKey)) return;
   const actions: Record<string, () => void> = {
     o: () => void pickFile(),
+    f: () => hasDocument() && openSearch(),
     "=": () => viewer.zoomBy(1.25),
     "+": () => viewer.zoomBy(1.25),
     "-": () => viewer.zoomBy(0.8),
@@ -341,6 +348,161 @@ window.addEventListener("keydown", (e) => {
     action();
   }
 });
+
+// ---- Tools: hand / select text, dark pages ---------------------------------------
+
+type Tool = "hand" | "select";
+let tool: Tool = "hand";
+
+const stored = (key: string) => {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+const store = (key: string, value: string) => {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Storage unavailable (private mode): the preference just isn't remembered.
+  }
+};
+
+function setTool(next: Tool): void {
+  tool = next;
+  scroller.classList.toggle("select-mode", tool === "select");
+  $("tool-hand").setAttribute("aria-pressed", String(tool === "hand"));
+  $("tool-select").setAttribute("aria-pressed", String(tool === "select"));
+  store("velo.tool", tool);
+}
+
+function setDarkPages(dark: boolean): void {
+  scroller.classList.toggle("dark-pages", dark);
+  $("dark-btn").setAttribute("aria-pressed", String(dark));
+  store("velo.dark", dark ? "1" : "0");
+}
+
+$("tool-hand").addEventListener("click", () => setTool("hand"));
+$("tool-select").addEventListener("click", () => setTool("select"));
+$("dark-btn").addEventListener("click", () => setDarkPages(!scroller.classList.contains("dark-pages")));
+setTool(stored("velo.tool") === "select" ? "select" : "hand");
+setDarkPages(stored("velo.dark") === "1");
+
+window.addEventListener("keydown", (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey || !hasDocument()) return;
+  if ((e.target as HTMLElement).tagName === "INPUT") return;
+  const key = e.key.toLowerCase();
+  if (key === "h") setTool("hand");
+  else if (key === "t") setTool("select");
+  else if (key === "d") setDarkPages(!scroller.classList.contains("dark-pages"));
+  else if (e.key === "F3") {
+    e.preventDefault();
+    if (searchbar.hidden) openSearch();
+    else step(e.shiftKey ? -1 : 1);
+  }
+});
+
+// ---- Search ----------------------------------------------------------------------
+
+const searchbar = $<HTMLDivElement>("searchbar");
+const searchInput = $<HTMLInputElement>("search-input");
+const searchCount = $<HTMLSpanElement>("search-count");
+let search: PdfSearch | null = null;
+let matches: SearchMatch[] = [];
+let matchesByPage = new Map<number, SearchMatch[]>();
+let selected: SearchMatch | null = null;
+let searchTimer = 0;
+
+const highlights: Highlights = {
+  ranges: (page) =>
+    (matchesByPage.get(page) ?? []).map((m) => ({ start: m.start, end: m.end, selected: m === selected })),
+  offsets: (page) => search?.offsets(page),
+};
+
+function openSearch(): void {
+  searchbar.hidden = false;
+  searchInput.focus();
+  searchInput.select();
+}
+
+function closeSearch(): void {
+  searchbar.hidden = true;
+  clearTimeout(searchTimer);
+  search?.cancel();
+  matches = [];
+  matchesByPage = new Map();
+  selected = null;
+  searchCount.textContent = "";
+  viewer.setHighlights(null);
+}
+
+function showCount(searched: number, total: number): void {
+  const progress = searched < total ? ` · ${Math.floor((searched / total) * 100)}%` : "";
+  if (!matches.length) searchCount.textContent = searched < total ? `Searching${progress}` : "No results";
+  else searchCount.textContent = `${selected ? matches.indexOf(selected) + 1 : 0} / ${matches.length}${progress}`;
+}
+
+let searchedPages = 0;
+
+async function runSearch(query: string): Promise<void> {
+  if (!search) return;
+  matches = [];
+  matchesByPage = new Map();
+  selected = null;
+  if (!query.trim()) {
+    search.cancel();
+    searchCount.textContent = "";
+    viewer.setHighlights(null);
+    return;
+  }
+  const fromPage = viewer.state.page - 1;
+  const total = viewer.state.pageCount;
+  await search.find(query, fromPage, (found, searched) => {
+    searchedPages = searched;
+    matches = found;
+    matchesByPage = new Map();
+    for (const m of found) {
+      if (!matchesByPage.has(m.page)) matchesByPage.set(m.page, []);
+      matchesByPage.get(m.page)!.push(m);
+    }
+    let reveal: number | undefined;
+    if (!selected && found.length) {
+      // Start from the first match at or after the page being read.
+      selected = found.find((m) => m.page >= fromPage) ?? found[0];
+      reveal = selected.page;
+    }
+    viewer.setHighlights(highlights, reveal);
+    showCount(searched, total);
+  });
+}
+
+function step(direction: 1 | -1): void {
+  if (!matches.length) return;
+  const index = selected ? matches.indexOf(selected) : -1;
+  selected = matches[(index + direction + matches.length) % matches.length];
+  viewer.setHighlights(highlights, selected.page);
+  showCount(searchedPages, viewer.state.pageCount);
+}
+
+searchInput.addEventListener("input", () => {
+  clearTimeout(searchTimer);
+  searchTimer = window.setTimeout(() => void runSearch(searchInput.value), 200);
+});
+searchInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    step(e.shiftKey ? -1 : 1);
+  } else if (e.key === "Escape") {
+    e.stopPropagation();
+    closeSearch();
+    scroller.focus();
+  }
+});
+$("search-btn").addEventListener("click", () => (searchbar.hidden ? openSearch() : closeSearch()));
+$("search-prev").addEventListener("click", () => step(-1));
+$("search-next").addEventListener("click", () => step(1));
+$("search-close").addEventListener("click", closeSearch);
 
 // ---- Install ---------------------------------------------------------------------
 

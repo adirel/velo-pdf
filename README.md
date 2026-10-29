@@ -8,8 +8,9 @@
 
 **Instant viewing for massive PDFs. Local, offline, zero lag.**
 
-A blazing-fast, installable PDF viewer (PWA) built for huge documents: 10,000 pages and gigabyte files
-open instantly, scroll at 60 fps and zoom without delay. Files never leave your device.
+A blazing-fast, installable PDF viewer (PWA) built for huge documents. A 10,000-page PDF is on screen in
+about a second, you can jump to any page in under 0.1 s, and scrolling never stutters, even at
+100,000 pages. Full-text search, text selection and dark mode included. Files never leave your device.
 
 [![Live demo](https://img.shields.io/badge/%F0%9F%9A%80_Live_demo-jolly--horse--319b11.netlify.app-22d3ee?style=for-the-badge)](https://jolly-horse-319b11.netlify.app/)
 
@@ -18,7 +19,9 @@ open instantly, scroll at 60 fps and zoom without delay. Files never leave your 
 [![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?style=flat-square&logo=pwa&logoColor=white)](#-install-as-an-app)
 [![Offline](https://img.shields.io/badge/offline-ready-8b5cf6?style=flat-square)](#-features)
 [![Privacy](https://img.shields.io/badge/privacy-100%25_local-ec4899?style=flat-square)](#-features)
-[![PRs welcome](https://img.shields.io/badge/PRs-welcome-22c55e?style=flat-square)](https://github.com/adirel/velo-pdf/pulls)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-22c55e?style=flat-square)](CONTRIBUTING.md)
+[![License: MIT](https://img.shields.io/badge/license-MIT-facc15?style=flat-square)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/adirel/velo-pdf?style=flat-square&color=22d3ee)](https://github.com/adirel/velo-pdf/releases)
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vite.dev/)
@@ -35,26 +38,32 @@ open instantly, scroll at 60 fps and zoom without delay. Files never leave your 
 [![Stars](https://img.shields.io/github/stars/adirel/velo-pdf?style=flat-square&logo=github)](https://github.com/adirel/velo-pdf/stargazers)
 
 **[Open the app](https://jolly-horse-319b11.netlify.app/)** ·
-**[Report a bug](https://github.com/adirel/velo-pdf/issues/new)** ·
-**[Request a feature](https://github.com/adirel/velo-pdf/issues/new)**
+**[Benchmarks](#-benchmarks)** ·
+**[Report a bug](https://github.com/adirel/velo-pdf/issues/new/choose)** ·
+**[Request a feature](https://github.com/adirel/velo-pdf/issues/new/choose)**
+
+⭐ **If Velo PDF is useful to you, a star helps others find it!**
 
 <br />
 
-<img src="docs/screenshots/home.png" alt="Velo PDF home screen" width="900" />
+<img src="docs/demo.gif" alt="Velo PDF demo: open a 10,000-page PDF, jump to page 9,000, zoom to 800%, search, dark mode" width="900" />
 
 </div>
 
 ## 📸 Screenshots
 
-| Viewer | Menu & recent files |
-|---|---|
-| <img src="docs/screenshots/viewer.png" alt="Viewing page 137 of a 5,000-page PDF" /> | <img src="docs/screenshots/sidebar.png" alt="Sidebar with recent files" /> |
+| Home | Viewer | Menu & recent files |
+|---|---|---|
+| <img src="docs/screenshots/home.png" alt="Velo PDF home screen" /> | <img src="docs/screenshots/viewer.png" alt="Viewing page 4,321 of a 10,000-page PDF" /> | <img src="docs/screenshots/sidebar.png" alt="Sidebar with recent files" /> |
 
 ## ✨ Features
 
-- ⚡ **Zero-lag scrolling** through 10,000+ pages: only what's on screen is rendered.
-- 🗂️ **Gigabyte files**: read from disk by byte range, never loaded fully into RAM.
-- 🔍 **Instant zoom** with the mouse wheel or pinch, anchored at the cursor; razor-sharp at any zoom level.
+- ⚡ **Zero-lag scrolling** through 100,000+ pages: only what's on screen is rendered.
+- 🎯 **Jump anywhere instantly**: page 90,000 of 100,000 is sharp in under 0.1 s.
+- 🔍 **Instant zoom** with the mouse wheel or pinch, anchored at the cursor; razor-sharp up to 800%.
+- 🔎 **Full-text search** (`Ctrl` `F`) with streamed results: the first hit appears in milliseconds.
+- ✍️ **Text selection** tool to select and copy text.
+- 🌙 **Dark reading mode** for night reading.
 - ✋ **Drag to pan** with the left mouse button, with a smooth glide on release.
 - 🕘 **Recent files** with "continue reading": reopens each file at the page you left off.
 - 📲 **Installable PWA** that works fully **offline**.
@@ -90,7 +99,10 @@ File handling comes from `file_handlers` in the manifest ([`vite.config.ts`](vit
 |---|---|
 | Zoom in / out | Mouse wheel, touchpad pinch, `Ctrl` `+` / `Ctrl` `-` |
 | Fit page | `Ctrl` `0` |
-| Pan | Drag with the left mouse button |
+| Pan (hand tool) | Drag with the left mouse button · `H` |
+| Select text | `T`, then drag over text |
+| Search | `Ctrl` `F`, then `Enter` / `Shift` `Enter` (or `F3`) for next / previous |
+| Dark pages | `D` |
 | Scroll | Scrollbars, `PageUp` / `PageDown`, arrows, `Home` / `End` |
 | Open a file | `Ctrl` `O`, the menu, or drop a PDF anywhere |
 | Go to page | Type a number in the page box and press `Enter` |
@@ -105,6 +117,8 @@ npm run dev             # http://localhost:5173
 npm run build           # production build in dist/ (with service worker)
 npm run build:preview   # build + serve on http://localhost:4173 (installable)
 npm run icons           # regenerate the logo and app icons
+npm run demo-pdf -- 10000                          # generate a 10,000-page test PDF in test-files/
+npm run benchmark -- velo-demo-10000.pdf 3         # benchmark it (dev server must be running)
 ```
 
 The dev server doesn't run the service worker; use `build:preview` (or the deployed site) to test installing.
@@ -117,11 +131,32 @@ The dev server doesn't run the service worker; use `build:preview` (or the deplo
 | Publish directory | `dist` |
 | Node version | 22 |
 
+## 📊 Benchmarks
+
+Measured with [`scripts/benchmark.mjs`](scripts/benchmark.mjs) in headless Chrome (1440×900) on an
+Intel Core Ultra 7 155H laptop, median of 5 runs (10k) and 3 runs (100k). Test files come from
+[`scripts/make-demo-pdf.mjs`](scripts/make-demo-pdf.mjs), so you can reproduce everything.
+
+| | 10,000 pages · 33.5 MB | 100,000 pages · 335 MB |
+|---|---|---|
+| Open → first page sharp | **1.0 s** | **5.3 s** |
+| Jump to page at 90% → sharp | **85 ms** | **87 ms** |
+| Main-thread long tasks during a fast fling (120 × 600 px) | **0** | **0** |
+| Zoom response | **22 ms** | **14 ms** |
+| Search: first hit | **36 ms** | **15 ms** |
+| Search: all pages | 10.6 s (46,658 hits) | not measured (see limitations) |
+
+**Known limitations** (help wanted!):
+- Opening time grows with file size: during open, pdf.js currently reads the whole file for these test PDFs.
+  Viewing, jumping and zooming afterwards don't depend on size. Tracked in the issues.
+- Searching *every* page of a 100,000-page document takes minutes and a lot of memory. Results stream in, so
+  the first hits still appear immediately.
+
 ## 🧠 How it stays fast
 
 | Technique | Where |
 |---|---|
-| Large files are read from disk by byte range (`Blob.slice`), never fully loaded into RAM! | [`openPdf.ts`](src/pdf/openPdf.ts) |
+| Large local files are read through a byte-range transport (`Blob.slice`) instead of one big `arrayBuffer()` | [`openPdf.ts`](src/pdf/openPdf.ts) |
 | Virtualized DOM: only the visible pages ±1 exist | [`PdfViewer.ts`](src/viewer/PdfViewer.ts) `#update` |
 | Page sizes are guessed from page 1, then fixed in idle batches with scroll anchoring | [`PageLayout.ts`](src/viewer/PageLayout.ts), `#loadAllSizes` |
 | Priority render queue that cancels off-screen work on every scroll | [`RenderQueue.ts`](src/viewer/RenderQueue.ts) |
@@ -130,18 +165,28 @@ The dev server doesn't run the service worker; use `build:preview` (or the deplo
 | Zoom is instant: existing canvases are stretched by CSS, then re-rendered | `setScale` |
 | At high zoom, a sharp "detail" canvas covers only the visible region | `#detailRequest` |
 | LRU cache of rendered canvases with a byte budget (384MB), and evicted pages are cleaned up | [`CanvasCache.ts`](src/viewer/CanvasCache.ts) |
+| Documents taller than the browser's max element height (~33M px) scroll inside a re-basing 15M px window | `#setDocTop` |
+| Text layers are built once at scale 1 and scaled with a CSS variable, so zoom never rebuilds them | [`PageTextLayer.ts`](src/viewer/PageTextLayer.ts) |
 
 ## 🗺️ Roadmap
 
-- [ ] Text selection, copy and full-text search
 - [ ] Thumbnails sidebar and outline / bookmarks
+- [ ] Clickable links, rotation, two-page layout, print
+- [ ] Faster open for huge non-linearized files
 - [ ] Rendering inside a Worker with `OffscreenCanvas`
+- [x] Full-text search, text selection, dark mode
+- [x] 100,000-page documents at any zoom
 - [x] Recent files with resume position
 - [x] Installable PWA with Windows file handling
 
 ## 🤝 Contributing
 
-Issues and pull requests are welcome. Please run `npm run build` before opening a PR; CI runs the same check.
+Issues and pull requests are welcome! Start with [CONTRIBUTING.md](CONTRIBUTING.md) and the
+[good first issues](https://github.com/adirel/velo-pdf/labels/good%20first%20issue).
+
+## 📄 License
+
+[MIT](LICENSE) © adirel. Built on [pdf.js](https://github.com/mozilla/pdf.js) (Apache-2.0).
 
 ---
 

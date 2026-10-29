@@ -1,6 +1,7 @@
 import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
 import { CanvasCache } from "./CanvasCache";
 import { PAGE_GAP, PageLayout } from "./PageLayout";
+import { PageTextLayer, type HighlightRange } from "./PageTextLayer";
 import { RenderQueue, type Clip, type RenderRequest } from "./RenderQueue";
 
 const CACHE_BUDGET_BYTES = 384 * 1024 * 1024;
@@ -13,6 +14,14 @@ const PREFETCH_PAGES = 2;
 const FAST_SCROLL_SPEED = 3;
 const SETTLE_MS = 140;
 const SIZE_BATCH = 50;
+// Reading every page's size touches the whole file, so bigger files skip that pass and
+// learn page sizes as pages are rendered.
+const SIZE_PASS_MAX_BYTES = 64 * 1024 * 1024;
+// Browsers cap element height (~33.5M px in Chrome, ~17.8M in Firefox). Taller documents
+// (100,000 pages, or 10,000 pages at high zoom) scroll inside a window of this height
+// that is re-based whenever the viewport nears one of its edges.
+const SCROLL_WINDOW = 15_000_000;
+const REBASE_MARGIN = 1_500_000;
 // Detail renders cover the viewport plus this fraction on each side.
 const DETAIL_MARGIN = 0.15;
 
@@ -30,6 +39,14 @@ interface Slot {
   el: HTMLDivElement;
   canvas: HTMLCanvasElement | null;
   detail: Detail | null;
+  text: PageTextLayer | null;
+}
+
+/** Search highlights, supplied by the search UI. */
+export interface Highlights {
+  ranges(page: number): HighlightRange[];
+  /** Start offset of each text item in the page text the ranges refer to. */
+  offsets(page: number): number[] | undefined;
 }
 
 interface Anchor {
@@ -68,6 +85,11 @@ export class PdfViewer {
   #currentPage = 0;
   #sizesFixed = false;
   #generation = 0;
+  #highlights: Highlights | null = null;
+  /** Page whose selected highlight should be scrolled into view once its text layer is ready. */
+  #revealPage: number | null = null;
+  /** Document offset of the scroll window's top (0 unless the document is taller than SCROLL_WINDOW). */
+  #base = 0;
 
   onStateChange: (state: ViewerState) => void = () => {};
 
@@ -93,7 +115,7 @@ export class PdfViewer {
     };
   }
 
-  async load(doc: PDFDocumentProxy): Promise<void> {
+  async load(doc: PDFDocumentProxy, fileSize: number): Promise<void> {
     this.close();
     const generation = this.#generation;
     const first = (await doc.getPage(1)).getViewport({ scale: 1 });
@@ -112,7 +134,7 @@ export class PdfViewer {
     this.#applyContentSize();
     this.#scroller.scrollTo(0, 0);
     this.#scheduleUpdate();
-    void this.#loadAllSizes(generation);
+    if (fileSize <= SIZE_PASS_MAX_BYTES) void this.#loadAllSizes(generation);
   }
 
   close(): void {
@@ -126,14 +148,27 @@ export class PdfViewer {
     this.#layout = null;
     this.#sizesFixed = false;
     this.#currentPage = 0;
+    this.#highlights = null;
+    this.#revealPage = null;
+    this.#base = 0;
     this.#content.style.width = this.#content.style.height = "0";
+  }
+
+  /** Shows search highlights; with `revealPage`, scrolls that page's selected match into view. */
+  setHighlights(highlights: Highlights | null, revealPage?: number): void {
+    this.#highlights = highlights;
+    this.#revealPage = revealPage ?? null;
+    for (const [page, slot] of this.#slots) this.#applyHighlights(page, slot);
+    if (this.#revealPage !== null && !this.#slots.get(this.#revealPage)?.text?.ready) {
+      this.goToPage(this.#revealPage + 1);
+    }
   }
 
   goToPage(pageNumber: number): void {
     const layout = this.#layout;
     if (!layout) return;
     const index = Math.min(Math.max(pageNumber - 1, 0), layout.count - 1);
-    this.#scroller.scrollTop = layout.top(index) - PAGE_GAP;
+    this.#setDocTop(layout.top(index) - PAGE_GAP);
   }
 
   /** Zooms keeping the document point under (clientX, clientY) fixed; defaults to the viewport center. */
@@ -171,7 +206,7 @@ export class PdfViewer {
 
   /** Read from the scroll position, since #currentPage only updates on the next frame. */
   #pageAtCenter(): number {
-    return this.#layout!.indexAt(this.#scroller.scrollTop + this.#scroller.clientHeight / 2);
+    return this.#layout!.indexAt(this.#docTop() + this.#scroller.clientHeight / 2);
   }
 
   #fitWidthScale(index: number, max: number): number {
@@ -181,7 +216,7 @@ export class PdfViewer {
 
   #anchorAt(x: number, y: number): Anchor {
     const layout = this.#layout!;
-    const docY = this.#scroller.scrollTop + y;
+    const docY = this.#docTop() + y;
     const docX = this.#scroller.scrollLeft + x;
     const page = layout.indexAt(docY);
     return {
@@ -200,21 +235,59 @@ export class PdfViewer {
     layout.compute(this.#scale, this.#scroller.clientWidth);
     this.#applyContentSize();
     const p = anchor.page;
-    this.#scroller.scrollTop = layout.top(p) + anchor.fy * layout.height(p) - anchor.y;
+    this.#setDocTop(layout.top(p) + anchor.fy * layout.height(p) - anchor.y);
     this.#scroller.scrollLeft = layout.left(p) + anchor.fx * layout.width(p) - anchor.x;
     this.#positionSlots();
     this.#scheduleUpdate();
   }
 
+  /** Vertical scroll position in document coordinates. */
+  #docTop(): number {
+    return this.#base + this.#scroller.scrollTop;
+  }
+
+  /** Scrolls to a document offset, re-basing the scroll window if the target is outside it. */
+  #setDocTop(y: number): void {
+    const layout = this.#layout!;
+    const viewport = this.#scroller.clientHeight;
+    y = Math.min(Math.max(y, 0), Math.max(0, layout.contentHeight - viewport));
+    if (layout.contentHeight <= SCROLL_WINDOW) {
+      this.#rebase(0);
+    } else {
+      const local = y - this.#base;
+      if (local < 0 || local > SCROLL_WINDOW - viewport || local < REBASE_MARGIN || local > SCROLL_WINDOW - REBASE_MARGIN - viewport) {
+        const base = Math.min(Math.max(y - SCROLL_WINDOW / 2, 0), layout.contentHeight - SCROLL_WINDOW);
+        this.#rebase(base);
+      }
+    }
+    this.#scroller.scrollTop = y - this.#base;
+  }
+
+  #rebase(base: number): void {
+    if (base === this.#base) return;
+    this.#base = base;
+    this.#positionSlots();
+  }
+
   #applyContentSize(): void {
     const layout = this.#layout!;
+    // Text layers are built at scale 1 and scaled by this variable.
+    this.#content.style.setProperty("--total-scale-factor", String(this.#scale));
     this.#content.style.width = `${layout.contentWidth}px`;
-    this.#content.style.height = `${layout.contentHeight}px`;
+    this.#content.style.height = `${Math.min(layout.contentHeight, SCROLL_WINDOW)}px`;
   }
 
   #onScroll(): void {
     const now = performance.now();
-    const top = this.#scroller.scrollTop;
+    if (this.#layout && this.#layout.contentHeight > SCROLL_WINDOW) {
+      const local = this.#scroller.scrollTop;
+      const nearTop = this.#base > 0 && local < REBASE_MARGIN;
+      const nearBottom =
+        this.#base + SCROLL_WINDOW < this.#layout.contentHeight &&
+        local > SCROLL_WINDOW - REBASE_MARGIN - this.#scroller.clientHeight;
+      if (nearTop || nearBottom) this.#setDocTop(this.#docTop());
+    }
+    const top = this.#docTop();
     const dt = now - this.#lastScroll.time;
     const dy = top - this.#lastScroll.top;
     if (dy) this.#direction = Math.sign(dy);
@@ -244,7 +317,7 @@ export class PdfViewer {
   #update(): void {
     const layout = this.#layout;
     if (!layout || !this.#queue) return;
-    const top = this.#scroller.scrollTop;
+    const top = this.#docTop();
     const bottom = top + this.#scroller.clientHeight;
     const first = layout.indexAt(top);
     const last = layout.indexAt(bottom);
@@ -265,6 +338,13 @@ export class PdfViewer {
     if (current !== this.#currentPage) {
       this.#currentPage = current;
       this.onStateChange(this.state);
+    }
+
+    if (!this.#interacting) {
+      for (let page = first; page <= last; page++) {
+        const slot = this.#slots.get(page)!;
+        if (!slot.text) void this.#buildText(page, slot);
+      }
     }
 
     const wanted = this.#wantedRenders(first, last, center);
@@ -291,13 +371,14 @@ export class PdfViewer {
     const marginY = sc.clientHeight * DETAIL_MARGIN;
     const left = layout.left(page);
     const top = layout.top(page);
+    const docTop = this.#docTop();
     const visible = (x0: number, y0: number, x1: number, y1: number) => ({
       x0: Math.max(0, x0 - left),
       y0: Math.max(0, y0 - top),
       x1: Math.min(layout.width(page), x1 - left),
       y1: Math.min(layout.height(page), y1 - top),
     });
-    const view = visible(sc.scrollLeft, sc.scrollTop, sc.scrollLeft + sc.clientWidth, sc.scrollTop + sc.clientHeight);
+    const view = visible(sc.scrollLeft, docTop, sc.scrollLeft + sc.clientWidth, docTop + sc.clientHeight);
     if (view.x1 <= view.x0 || view.y1 <= view.y0) return null;
 
     // The current detail still covers what's on screen at this zoom: keep it.
@@ -316,9 +397,9 @@ export class PdfViewer {
 
     const area = visible(
       sc.scrollLeft - marginX,
-      sc.scrollTop - marginY,
+      docTop - marginY,
       sc.scrollLeft + sc.clientWidth + marginX,
-      sc.scrollTop + sc.clientHeight + marginY,
+      docTop + sc.clientHeight + marginY,
     );
     const x = Math.floor(area.x0 * ratio);
     const y = Math.floor(area.y0 * ratio);
@@ -395,7 +476,7 @@ export class PdfViewer {
     const el = document.createElement("div");
     el.className = "pdf-page";
     el.dataset.page = String(page + 1);
-    const slot: Slot = { el, canvas: null, detail: null };
+    const slot: Slot = { el, canvas: null, detail: null, text: null };
     this.#slots.set(page, slot);
     this.#positionSlot(page, slot);
     this.#showCached(page, slot);
@@ -404,6 +485,7 @@ export class PdfViewer {
 
   #removeSlot(page: number, slot: Slot): void {
     this.#setDetail(slot, null);
+    slot.text?.destroy();
     slot.el.remove();
     this.#slots.delete(page);
   }
@@ -415,7 +497,7 @@ export class PdfViewer {
   #positionSlot(page: number, slot: Slot): void {
     const layout = this.#layout!;
     const style = slot.el.style;
-    style.transform = `translate(${layout.left(page)}px, ${layout.top(page)}px)`;
+    style.transform = `translate(${layout.left(page)}px, ${layout.top(page) - this.#base}px)`;
     style.width = `${layout.width(page)}px`;
     style.height = `${layout.height(page)}px`;
   }
@@ -445,6 +527,44 @@ export class PdfViewer {
     const slot = this.#slots.get(request.page);
     if (slot) this.#showCached(request.page, slot);
     this.#scheduleUpdate();
+  }
+
+  async #buildText(page: number, slot: Slot): Promise<void> {
+    const text = new PageTextLayer(slot.el);
+    slot.text = text;
+    try {
+      const pdfPage = await this.#doc!.getPage(page + 1);
+      if (slot.text !== text) return;
+      await text.build(pdfPage);
+    } catch (err) {
+      if (slot.text === text) console.error(`Failed to build text layer for page ${page + 1}`, err);
+      return;
+    }
+    if (this.#slots.get(page) === slot && slot.text === text) this.#applyHighlights(page, slot);
+  }
+
+  #applyHighlights(page: number, slot: Slot): void {
+    if (!slot.text?.ready) return;
+    const h = this.#highlights;
+    const selected = h ? slot.text.highlight(h.ranges(page), h.offsets(page)) : slot.text.highlight([], undefined);
+    if (selected && this.#revealPage === page) {
+      this.#revealPage = null;
+      this.#reveal(selected);
+    }
+  }
+
+  /** Scrolls so `el` is centered, unless it's already comfortably visible. */
+  #reveal(el: HTMLElement): void {
+    const sc = this.#scroller;
+    const box = el.getBoundingClientRect();
+    const view = sc.getBoundingClientRect();
+    const margin = 60;
+    if (box.top < view.top + margin || box.bottom > view.bottom - margin) {
+      this.#setDocTop(this.#docTop() + box.top + box.height / 2 - (view.top + view.height / 2));
+    }
+    if (box.left < view.left + margin || box.right > view.right - margin) {
+      sc.scrollLeft += box.left + box.width / 2 - (view.left + view.width / 2);
+    }
   }
 
   #learnSize(page: PDFPageProxy): void {

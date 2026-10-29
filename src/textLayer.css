@@ -1,0 +1,73 @@
+/* Text layer styles, adapted from pdf.js (web/pdf_viewer.css, Apache-2.0). */
+.textLayer {
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+  --scale-round-x: 1px;
+  --scale-round-y: 1px;
+
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: clip;
+  line-height: 1;
+  text-align: initial;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
+  color-scheme: only light;
+}
+
+.textLayer :is(span, br) {
+  position: absolute;
+  color: transparent;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+  user-select: text;
+}
+
+.textLayer > :not(.markedContent),
+.textLayer .markedContent span:not(.markedContent) {
+  --font-height: 0;
+  --scale-x: 1;
+  --rotate: 0deg;
+  z-index: 1;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+
+.textLayer .markedContent {
+  display: contents;
+}
+
+.textLayer span[role="img"] {
+  user-select: none;
+  cursor: default;
+}
+
+/* Search matches: spans nested inside a text item, so they flow with it. */
+.textLayer .highlight {
+  position: static;
+  margin: -1px;
+  padding: 1px;
+  border-radius: 3px;
+  background: rgb(236 72 153 / 0.35);
+}
+
+.textLayer .highlight.selected {
+  background: rgb(34 211 238 / 0.55);
+  box-shadow: 0 0 0 2px rgb(34 211 238 / 0.9), 0 0 14px rgb(34 211 238 / 0.8);
+}
+
+.textLayer ::selection {
+  background: rgb(139 92 246 / 0.35);
+  color: transparent;
+}
+
+.textLayer br::selection {
+  background: transparent;
+}
